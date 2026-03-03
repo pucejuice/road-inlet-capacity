@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEC-22 Kerb Inlet Capacity Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg-primary: #0f1117;
+    --bg-secondary: #181b24;
+    --bg-tertiary: #1e2230;
+    --bg-input: #252a38;
+    --border: #2d3348;
+    --border-focus: #4a7cff;
+    --text-primary: #e8eaf0;
+    --text-secondary: #9499ab;
+    --text-muted: #5c6178;
+    --accent-blue: #4a7cff;
+    --accent-cyan: #22d3ee;
+    --accent-orange: #f59e0b;
+    --accent-green: #34d399;
+    --accent-red: #f87171;
+    --grate-color: #22d3ee;
+    --lintel-color: #f59e0b;
+    --total-color: #4a7cff;
+    --gutter-color: #6b7280;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ─────────────────────────────────── */
+  .header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header h1 {
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+  .header h1 span { color: var(--accent-blue); }
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(74,124,255,0.12);
+    color: var(--accent-blue);
+    border: 1px solid rgba(74,124,255,0.25);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── Mode Toggle ────────────────────────────── */
+  .mode-toggle {
+    display: flex;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .mode-btn {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    background: var(--accent-blue);
+    color: #fff;
+  }
+  .mode-btn:hover:not(.active) { color: var(--text-primary); }
+
+  /* ── Layout ─────────────────────────────────── */
+  .main { display: flex; min-height: calc(100vh - 60px); }
+  .sidebar {
+    width: 340px;
+    min-width: 340px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 24px;
+    overflow-y: auto;
+    max-height: calc(100vh - 60px);
+  }
+  .content {
+    flex: 1;
+    padding: 24px 32px;
+    overflow-y: auto;
+    max-height: calc(100vh - 60px);
+  }
+
+  /* ── Input Groups ───────────────────────────── */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .input-group { margin-bottom: 20px; }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .field label .unit {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--border-focus); }
+  .field select { cursor: pointer; }
+  .field select option { background: var(--bg-input); }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── Toggle Switch ──────────────────────────── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+  }
+  .toggle-row span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-input);
+    border-radius: 22px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  .slider::before {
+    content: '';
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .switch input:checked + .slider { background: var(--accent-blue); border-color: var(--accent-blue); }
+  .switch input:checked + .slider::before { transform: translateX(18px); background: #fff; }
+
+  /* ── Calculate Button ───────────────────────── */
+  .calc-btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    background: var(--accent-blue);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+  }
+  .calc-btn:hover { background: #3a6be8; transform: translateY(-1px); }
+  .calc-btn:active { transform: translateY(0); }
+
+  /* ── Chart Area ─────────────────────────────── */
+  .chart-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .chart-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    letter-spacing: 0.04em;
+  }
+  .chart-wrap { position: relative; height: 360px; }
+
+  /* ── Summary Cards ──────────────────────────── */
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .summary-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .summary-card .label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: var(--font-mono);
+  }
+  .summary-card .value {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .summary-card .value .unit-sm {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+  .val-total { color: var(--accent-blue); }
+  .val-grate { color: var(--accent-cyan); }
+  .val-lintel { color: var(--accent-orange); }
+  .val-gutter { color: var(--gutter-color); }
+
+  /* ── Table ──────────────────────────────────── */
+  .table-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .table-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 16px 20px 12px;
+    letter-spacing: 0.04em;
+  }
+  .table-scroll { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  thead th {
+    background: var(--bg-tertiary);
+    padding: 10px 14px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  tbody td {
+    padding: 8px 14px;
+    text-align: right;
+    border-bottom: 1px solid rgba(45,51,72,0.5);
+    color: var(--text-secondary);
+  }
+  tbody td:first-child { text-align: left; color: var(--text-primary); }
+  tbody tr:hover td { background: rgba(74,124,255,0.04); }
+  .td-grate { color: var(--grate-color) !important; }
+  .td-lintel { color: var(--lintel-color) !important; }
+  .td-total { color: var(--accent-blue) !important; font-weight: 600; }
+
+  /* ── Placeholder ────────────────────────────── */
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--text-muted);
+    font-size: 14px;
+    gap: 8px;
+  }
+  .placeholder svg { opacity: 0.3; }
+
+  /* ── Notes ───────────────────────────────────── */
+  .notes {
+    margin-top: 20px;
+    padding: 14px 18px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+  .notes strong { color: var(--text-secondary); }
+
+  /* ── Responsive ──────────────────────────────── */
+  @media (max-width: 860px) {
+    .main { flex-direction: column; }
+    .sidebar {
+      width: 100%; min-width: unset;
+      max-height: unset; border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .content { max-height: unset; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1><span>//</span> HEC-22 Kerb Inlet Capacity</h1>
+    <span class="badge">SI Units</span>
+  </div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btn-sag" onclick="setMode('sag')">Sag Inlet</button>
+    <button class="mode-btn" id="btn-ongrade" onclick="setMode('ongrade')">On-Grade</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- ── Sidebar Inputs ──────────────────────── -->
+  <div class="sidebar">
+
+    <div class="input-group">
+      <div class="section-label">Kerb &amp; Road Geometry</div>
+      <div class="field">
+        <label>Kerb Height <span class="unit">(m)</span></label>
+        <input type="number" id="kerbHeight" value="0.15" step="0.01" min="0.01">
+      </div>
+      <div class="field">
+        <label>Lintel Opening Height <span class="unit">(m)</span></label>
+        <input type="number" id="lintelOpeningH" value="0.075" step="0.005" min="0.01">
+      </div>
+      <div class="field">
+        <label>Lintel Length <span class="unit">(m)</span></label>
+        <input type="number" id="lintelLength" value="1.8" step="0.1" min="0.1">
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label>Crossfall <span class="unit">(%)</span></label>
+          <input type="number" id="crossfall" value="3.0" step="0.5" min="0.5">
+        </div>
+        <div class="field">
+          <label>Longitudinal Grade <span class="unit">(%)</span></label>
+          <input type="number" id="longGrade" value="1.0" step="0.1" min="0.1">
+        </div>
+      </div>
+      <div class="field">
+        <label>Manning's n</label>
+        <input type="number" id="manningsN" value="0.013" step="0.001" min="0.008" max="0.025">
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="section-label">Grate Configuration</div>
+      <div class="row-2">
+        <div class="field">
+          <label>Pit Length <span class="unit">(m)</span></label>
+          <input type="number" id="pitLength" value="0.9" step="0.1" min="0.1">
+        </div>
+        <div class="field">
+          <label>Pit Width <span class="unit">(m)</span></label>
+          <input type="number" id="pitWidth" value="0.6" step="0.1" min="0.1">
+        </div>
+      </div>
+      <div class="field">
+        <label>Grate Type</label>
+        <select id="grateType">
+          <option value="p50">P-50 (Parallel Bar 50mm)</option>
+          <option value="p30">P-30 (Parallel Bar 30mm)</option>
+          <option value="curved_vane" selected>Curved Vane</option>
+          <option value="tilt45">45° Tilt Bar</option>
+          <option value="reticuline">Reticuline</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <div class="section-label">Inlet Components</div>
+      <div class="toggle-row">
+        <span style="color:var(--lintel-color)">■</span>
+        <span>Lintel Opening</span>
+        <label class="switch">
+          <input type="checkbox" id="lintelOn" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <span style="color:var(--grate-color)">■</span>
+        <span>Grate Inlet</span>
+        <label class="switch">
+          <input type="checkbox" id="grateOn" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <button class="calc-btn" onclick="calculate()">Calculate Capacity</button>
+
+  </div>
+
+  <!-- ── Content Area ────────────────────────── -->
+  <div class="content" id="contentArea">
+    <div id="resultsArea" style="display:none;">
+
+      <div class="summary-row" id="summaryCards"></div>
+
+      <div class="chart-container">
+        <div class="chart-title" id="chartTitle">INLET CAPACITY RATING CURVE</div>
+        <div class="chart-wrap">
+          <canvas id="ratingChart"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-title" id="tableTitle">CAPACITY TABLE</div>
+        <div class="table-scroll">
+          <table>
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="notes" id="notesArea"></div>
+    </div>
+
+    <div id="placeholderArea" class="placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 12h4l3-9 4 18 3-9h4"/>
+      </svg>
+      <span>Configure inputs and click <strong>Calculate Capacity</strong></span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  Constants & Grate Data
+// ═══════════════════════════════════════════════════════
+const G = 9.81;
+
+// Splash-over velocity coefficients (US customary: L in ft, Vo in ft/s)
+const GRATE_DATA = {
+  p50:         { label: 'P-50',        a: 2.22, b: 4.03, c: 0.65, d: 0.06, openRatio: 0.90 },
+  p30:         { label: 'P-30',        a: 1.76, b: 3.12, c: 0.45, d: 0.03, openRatio: 0.80 },
+  curved_vane: { label: 'Curved Vane', a: 1.01, b: 2.23, c: 0.36, d: 0.03, openRatio: 0.35 },
+  tilt45:      { label: '45° Tilt',    a: 0.99, b: 2.64, c: 0.36, d: 0.03, openRatio: 0.34 },
+  reticuline:  { label: 'Reticuline',  a: 0.28, b: 2.28, c: 0.18, d: 0.01, openRatio: 0.80 },
+};
+
+// Weir / Orifice coefficients (SI)
+const CW = 1.66;   // Weir coefficient (undepressed, SI)
+const CO = 0.67;   // Orifice coefficient
+
+let mode = 'sag';
+let chart = null;
+
+// ═══════════════════════════════════════════════════════
+//  Utilities
+// ═══════════════════════════════════════════════════════
+function getVal(id) { return parseFloat(document.getElementById(id).value); }
+function getBool(id) { return document.getElementById(id).checked; }
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-sag').classList.toggle('active', m === 'sag');
+  document.getElementById('btn-ongrade').classList.toggle('active', m === 'ongrade');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SAG INLET CALCULATIONS
+// ═══════════════════════════════════════════════════════
+function sagLintelCapacity(L, h, d) {
+  // L = lintel length (m), h = opening height (m), d = water depth at kerb (m)
+  if (d <= 0) return 0;
+  const Qweir = CW * L * Math.pow(d, 1.5);
+  if (d <= h) return Qweir;
+  const do_ = d - h / 2;
+  const Qorifice = CO * (h * L) * Math.sqrt(2 * G * do_);
+  if (d >= 1.4 * h) return Qorifice;
+  // Transition zone: linear interpolation
+  const frac = (d - h) / (0.4 * h);
+  return Qweir * (1 - frac) + Qorifice * frac;
+}
+
+function sagGrateCapacity(Lg, Wg, openRatio, d) {
+  // Lg = grate length along kerb (m), Wg = grate width perp to kerb (m)
+  if (d <= 0) return 0;
+  const P = 2 * Wg + Lg; // perimeter excluding kerb side
+  const Ag = Lg * Wg * openRatio;
+  const Qweir = CW * P * Math.pow(d, 1.5);
+  // Transition depth approx when orifice controls
+  const Qorifice = CO * Ag * Math.sqrt(2 * G * d);
+  return Math.min(Qweir, Qorifice);
+}
+
+// ═══════════════════════════════════════════════════════
+//  ON-GRADE INLET CALCULATIONS
+// ═══════════════════════════════════════════════════════
+function gutterFlow(d, Sx, SL, n) {
+  // Izzard (Manning's) for triangular gutter, SI
+  // Q = (0.376/n) * Sx^(5/3) * SL^0.5 * T^(8/3)
+  // T = d / Sx
+  if (d <= 0) return 0;
+  const T = d / Sx;
+  return (0.376 / n) * Math.pow(Sx, 5/3) * Math.pow(SL, 0.5) * Math.pow(T, 8/3);
+}
+
+function gutterVelocity(Q, d, Sx) {
+  if (d <= 0 || Q <= 0) return 0;
+  const T = d / Sx;
+  const A = 0.5 * T * d; // triangular area
+  return Q / A;
+}
+
+function onGradeLintelCapture(Q, SL, n, Sx, L_lintel) {
+  if (Q <= 0) return 0;
+  // LT = 0.817 * Q^0.42 * SL^0.3 * (1/(n*Sx))^0.6
+  const LT = 0.817 * Math.pow(Q, 0.42) * Math.pow(SL, 0.3) * Math.pow(1/(n*Sx), 0.6);
+  let E;
+  if (L_lintel >= LT) {
+    E = 1.0;
+  } else {
+    E = 1 - Math.pow(1 - L_lintel / LT, 1.8);
+  }
+  return E * Q;
+}
+
+function splashOverVelocity(grateKey, Lg_m) {
+  const g = GRATE_DATA[grateKey];
+  const Lft = Lg_m / 0.3048;
+  const Vo_fps = g.a + g.b * Lft - g.c * Lft * Lft + g.d * Lft * Lft * Lft;
+  return Math.max(Vo_fps * 0.3048, 0); // convert to m/s
+}
+
+function onGradeGrateCapture(Q, d, Sx, SL, n, Lg, Wg, grateKey) {
+  if (Q <= 0 || d <= 0) return 0;
+  const T = d / Sx;
+  const V = gutterVelocity(Q, d, Sx);
+  const Vo = splashOverVelocity(grateKey, Lg);
+
+  // Frontal flow ratio
+  let Eo;
+  if (Wg >= T) {
+    Eo = 1.0;
+  } else {
+    Eo = 1 - Math.pow(1 - Wg / T, 2.67);
+  }
+
+  // Frontal flow interception
+  let Rf;
+  if (V <= Vo) {
+    Rf = 1.0;
+  } else {
+    Rf = Math.max(1 - 0.09 * (V - Vo), 0);
+  }
+
+  // Side flow interception (SI: Ku = 0.15)
+  const Rs = 1 / (1 + (0.15 * Math.pow(V, 1.8)) / (Sx * Math.pow(Lg, 2.3)));
+
+  const E = Rf * Eo + Rs * (1 - Eo);
+  return Math.min(E * Q, Q);
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN CALCULATION
+// ═══════════════════════════════════════════════════════
+function calculate() {
+  const kerbH   = getVal('kerbHeight');
+  const openH   = getVal('lintelOpeningH');
+  const lintelL = getVal('lintelLength');
+  const Sx      = getVal('crossfall') / 100;
+  const SL      = getVal('longGrade') / 100;
+  const n       = getVal('manningsN');
+  const Lg      = getVal('pitLength');
+  const Wg      = getVal('pitWidth');
+  const grateKey= document.getElementById('grateType').value;
+  const lintelOn= getBool('lintelOn');
+  const grateOn = getBool('grateOn');
+
+  if (!lintelOn && !grateOn) {
+    alert('Enable at least one inlet component (lintel or grate).');
+    return;
+  }
+
+  const openRatio = GRATE_DATA[grateKey].openRatio;
+  const numPts = 30;
+  const maxDepth = kerbH;
+  const results = [];
+
+  for (let i = 0; i <= numPts; i++) {
+    const d = (i / numPts) * maxDepth;
+    let Ql = 0, Qg = 0, Qgutter = 0;
+
+    if (mode === 'sag') {
+      if (lintelOn) Ql = sagLintelCapacity(lintelL, openH, d);
+      if (grateOn)  Qg = sagGrateCapacity(Lg, Wg, openRatio, d);
+    } else {
+      Qgutter = gutterFlow(d, Sx, SL, n);
+      if (lintelOn) Ql = onGradeLintelCapture(Qgutter, SL, n, Sx, lintelL);
+      if (grateOn)  Qg = onGradeGrateCapture(Qgutter, d, Sx, SL, n, Lg, Wg, grateKey);
+      // Combined: can't exceed total gutter flow
+      if (Ql + Qg > Qgutter) {
+        const scale = Qgutter / (Ql + Qg);
+        Ql *= scale;
+        Qg *= scale;
+      }
+    }
+
+    results.push({
+      depth: d,
+      lintel: Ql,
+      grate: Qg,
+      total: Ql + Qg,
+      gutter: Qgutter,
+    });
+  }
+
+  renderResults(results, lintelOn, grateOn);
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function renderResults(data, lintelOn, grateOn) {
+  document.getElementById('placeholderArea').style.display = 'none';
+  document.getElementById('resultsArea').style.display = '';
+
+  const maxRow = data[data.length - 1];
+  const isSag = mode === 'sag';
+  const modeLabel = isSag ? 'SAG' : 'ON-GRADE';
+
+  // ── Summary Cards ──
+  let cardsHTML = '';
+  cardsHTML += `<div class="summary-card"><div class="label">Peak Total</div><div class="value val-total">${(maxRow.total*1000).toFixed(1)}<span class="unit-sm">L/s</span></div></div>`;
+  if (grateOn)
+    cardsHTML += `<div class="summary-card"><div class="label">Peak Grate</div><div class="value val-grate">${(maxRow.grate*1000).toFixed(1)}<span class="unit-sm">L/s</span></div></div>`;
+  if (lintelOn)
+    cardsHTML += `<div class="summary-card"><div class="label">Peak Lintel</div><div class="value val-lintel">${(maxRow.lintel*1000).toFixed(1)}<span class="unit-sm">L/s</span></div></div>`;
+  if (!isSag)
+    cardsHTML += `<div class="summary-card"><div class="label">Peak Gutter Flow</div><div class="value val-gutter">${(maxRow.gutter*1000).toFixed(1)}<span class="unit-sm">L/s</span></div></div>`;
+  document.getElementById('summaryCards').innerHTML = cardsHTML;
+
+  // ── Chart ──
+  document.getElementById('chartTitle').textContent = `${modeLabel} INLET CAPACITY RATING CURVE`;
+  const depths = data.map(r => (r.depth * 1000).toFixed(0));
+  const datasets = [];
+
+  datasets.push({
+    label: 'Total Capacity',
+    data: data.map(r => +(r.total * 1000).toFixed(2)),
+    borderColor: 'rgba(74,124,255,1)',
+    backgroundColor: 'rgba(74,124,255,0.08)',
+    fill: true,
+    borderWidth: 2.5,
+    pointRadius: 0,
+    tension: 0.3,
+    order: 3,
+  });
+  if (grateOn) datasets.push({
+    label: 'Grate',
+    data: data.map(r => +(r.grate * 1000).toFixed(2)),
+    borderColor: 'rgba(34,211,238,0.9)',
+    backgroundColor: 'rgba(34,211,238,0.06)',
+    fill: true,
+    borderWidth: 2,
+    pointRadius: 0,
+    borderDash: [6,3],
+    tension: 0.3,
+    order: 2,
+  });
+  if (lintelOn) datasets.push({
+    label: 'Lintel',
+    data: data.map(r => +(r.lintel * 1000).toFixed(2)),
+    borderColor: 'rgba(245,158,11,0.9)',
+    backgroundColor: 'rgba(245,158,11,0.06)',
+    fill: true,
+    borderWidth: 2,
+    pointRadius: 0,
+    borderDash: [6,3],
+    tension: 0.3,
+    order: 1,
+  });
+  if (!isSag) datasets.push({
+    label: 'Gutter Flow',
+    data: data.map(r => +(r.gutter * 1000).toFixed(2)),
+    borderColor: 'rgba(107,114,128,0.6)',
+    borderWidth: 1.5,
+    pointRadius: 0,
+    borderDash: [2,4],
+    tension: 0.3,
+    fill: false,
+    order: 4,
+  });
+
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('ratingChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: depths, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          labels: {
+            color: '#9499ab',
+            font: { family: "'JetBrains Mono'", size: 11 },
+            boxWidth: 14, padding: 16,
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1e2230',
+          titleColor: '#e8eaf0',
+          bodyColor: '#9499ab',
+          borderColor: '#2d3348',
+          borderWidth: 1,
+          titleFont: { family: "'JetBrains Mono'", size: 12 },
+          bodyFont: { family: "'JetBrains Mono'", size: 11 },
+          callbacks: {
+            title: items => `Depth: ${items[0].label} mm`,
+            label: item => `${item.dataset.label}: ${item.formattedValue} L/s`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true, text: 'Flow Depth at Kerb (mm)',
+            color: '#5c6178',
+            font: { family: "'JetBrains Mono'", size: 11, weight: '500' },
+          },
+          ticks: { color: '#5c6178', font: { family: "'JetBrains Mono'", size: 10 }, maxTicksLimit: 10 },
+          grid: { color: 'rgba(45,51,72,0.4)' },
+        },
+        y: {
+          title: {
+            display: true, text: 'Capacity (L/s)',
+            color: '#5c6178',
+            font: { family: "'JetBrains Mono'", size: 11, weight: '500' },
+          },
+          ticks: { color: '#5c6178', font: { family: "'JetBrains Mono'", size: 10 } },
+          grid: { color: 'rgba(45,51,72,0.4)' },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
+
+  // ── Table ──
+  document.getElementById('tableTitle').textContent = `${modeLabel} CAPACITY TABLE`;
+  let headHTML = '<tr><th>Depth (mm)</th>';
+  if (!isSag) headHTML += '<th>Gutter Flow (L/s)</th>';
+  if (grateOn) headHTML += '<th>Grate (L/s)</th>';
+  if (lintelOn) headHTML += '<th>Lintel (L/s)</th>';
+  headHTML += '<th>Total (L/s)</th>';
+  if (!isSag) headHTML += '<th>Efficiency (%)</th>';
+  headHTML += '</tr>';
+  document.getElementById('tableHead').innerHTML = headHTML;
+
+  // Show every other row + first and last
+  let bodyHTML = '';
+  const step = Math.max(1, Math.floor(data.length / 15));
+  for (let i = 0; i < data.length; i++) {
+    if (i !== 0 && i !== data.length - 1 && i % step !== 0) continue;
+    const r = data[i];
+    const dMM = (r.depth * 1000).toFixed(0);
+    bodyHTML += `<tr><td>${dMM}</td>`;
+    if (!isSag) bodyHTML += `<td>${(r.gutter*1000).toFixed(1)}</td>`;
+    if (grateOn) bodyHTML += `<td class="td-grate">${(r.grate*1000).toFixed(1)}</td>`;
+    if (lintelOn) bodyHTML += `<td class="td-lintel">${(r.lintel*1000).toFixed(1)}</td>`;
+    bodyHTML += `<td class="td-total">${(r.total*1000).toFixed(1)}</td>`;
+    if (!isSag) {
+      const eff = r.gutter > 0 ? (r.total / r.gutter * 100) : 0;
+      bodyHTML += `<td>${eff.toFixed(1)}</td>`;
+    }
+    bodyHTML += '</tr>';
+  }
+  document.getElementById('tableBody').innerHTML = bodyHTML;
+
+  // ── Notes ──
+  const grateLabel = GRATE_DATA[document.getElementById('grateType').value].label;
+  let notes = `<strong>Method:</strong> HEC-22 (3rd Ed.) — ${isSag ? 'Sag' : 'On-Grade'} inlet analysis &nbsp;|&nbsp; `;
+  notes += `<strong>Grate:</strong> ${grateLabel}, ${(getVal('pitLength')*1000).toFixed(0)}×${(getVal('pitWidth')*1000).toFixed(0)} mm &nbsp;|&nbsp; `;
+  if (isSag) {
+    notes += `Lintel weir C<sub>w</sub>=${CW}, orifice C<sub>o</sub>=${CO}. Grate perimeter excludes kerb-side edge. `;
+    notes += `Transition between weir and orifice occurs at d = h to 1.4h for lintel, and min(Q<sub>weir</sub>, Q<sub>orifice</sub>) for grate.`;
+  } else {
+    notes += `Manning's n=${getVal('manningsN')} &nbsp;|&nbsp; `;
+    notes += `Gutter flow: Izzard/Manning's triangular channel. Lintel: L<sub>T</sub> method. `;
+    notes += `Grate: splash-over velocity with frontal/side flow interception. Combined capture capped at total gutter flow.`;
+  }
+  document.getElementById('notesArea').innerHTML = notes;
+}
+
+// Run on load with defaults
+window.addEventListener('DOMContentLoaded', () => {
+  // Auto-calc on Enter key
+  document.querySelectorAll('.sidebar input, .sidebar select').forEach(el => {
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+    el.addEventListener('change', () => calculate());
+  });
+  document.querySelectorAll('.switch input').forEach(el => {
+    el.addEventListener('change', () => calculate());
+  });
+  calculate();
+});
+</script>
+</body>
+</html>
