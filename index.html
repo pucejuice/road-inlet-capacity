@@ -351,6 +351,67 @@
   }
   .notes strong { color: var(--text-secondary); }
 
+  /* ── Print Button ─────────────────────────────── */
+  .print-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .print-btn:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+  .print-btn svg { width: 14px; height: 14px; }
+
+  /* ── Print Header (hidden on screen) ────────── */
+  .print-header {
+    display: none;
+    padding: 0 0 12px 0;
+    border-bottom: 2px solid #222;
+    margin-bottom: 14px;
+  }
+  .print-header h1 {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 2px;
+  }
+  .print-header .print-subtitle {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: #555;
+  }
+  .print-params {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: #444;
+    margin-bottom: 10px;
+    line-height: 1.7;
+    column-count: 2;
+    column-gap: 32px;
+  }
+  .print-params span { white-space: nowrap; }
+  .print-params .param-label { font-weight: 600; color: #222; }
+  .print-footer {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: #888;
+    border-top: 1px solid #ccc;
+    padding-top: 6px;
+    margin-top: 10px;
+    text-align: center;
+  }
+
   /* ── Responsive ──────────────────────────────── */
   @media (max-width: 860px) {
     .main { flex-direction: column; }
@@ -360,6 +421,96 @@
       border-bottom: 1px solid var(--border);
     }
     .content { max-height: unset; }
+  }
+
+  /* ── Print Styles ───────────────────────────── */
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 12mm 14mm;
+    }
+
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    body {
+      background: #fff !important;
+      color: #111 !important;
+      font-size: 10px;
+      min-height: auto;
+    }
+
+    .header, .sidebar, .summary-row, #placeholderArea, .calc-btn, .print-btn { display: none !important; }
+
+    .main {
+      display: block !important;
+      min-height: auto !important;
+    }
+
+    .content {
+      padding: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+
+    .print-header { display: block !important; }
+    .print-params { display: block !important; }
+    .print-footer { display: block !important; }
+
+    .chart-container {
+      background: #fff !important;
+      border: 1px solid #ddd !important;
+      border-radius: 4px !important;
+      padding: 12px 14px !important;
+      margin-bottom: 14px !important;
+      page-break-inside: avoid;
+    }
+    .chart-title {
+      color: #333 !important;
+      font-size: 10px !important;
+      margin-bottom: 8px !important;
+    }
+    .chart-wrap {
+      height: 260px !important;
+    }
+
+    .table-container {
+      background: #fff !important;
+      border: 1px solid #ddd !important;
+      border-radius: 4px !important;
+      page-break-inside: avoid;
+    }
+    .table-title {
+      color: #333 !important;
+      font-size: 10px !important;
+      padding: 8px 12px 6px !important;
+    }
+    table { font-size: 9px !important; }
+    thead th {
+      background: #f0f0f0 !important;
+      color: #333 !important;
+      padding: 6px 10px !important;
+      border-bottom: 1px solid #ccc !important;
+    }
+    tbody td {
+      padding: 4px 10px !important;
+      border-bottom: 1px solid #eee !important;
+      color: #333 !important;
+    }
+    tbody td:first-child { color: #111 !important; }
+    .td-grate { color: #0891b2 !important; }
+    .td-lintel { color: #b45309 !important; }
+    .td-total { color: #2563eb !important; font-weight: 600; }
+
+    .notes {
+      background: #f8f8f8 !important;
+      border: 1px solid #ddd !important;
+      color: #555 !important;
+      font-size: 8px !important;
+      padding: 8px 12px !important;
+      margin-top: 10px !important;
+      page-break-inside: avoid;
+    }
+    .notes strong { color: #333 !important; }
   }
 </style>
 </head>
@@ -374,6 +525,10 @@
     <button class="mode-btn active" id="btn-sag" onclick="setMode('sag')">Sag Inlet</button>
     <button class="mode-btn" id="btn-ongrade" onclick="setMode('ongrade')">On-Grade</button>
   </div>
+  <button class="print-btn" onclick="printChart()" title="Print chart to A4 Landscape">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    Print
+  </button>
 </div>
 
 <div class="main">
@@ -462,6 +617,12 @@
   <div class="content" id="contentArea">
     <div id="resultsArea" style="display:none;">
 
+      <div class="print-header" id="printHeader">
+        <h1>HEC-22 Kerb Inlet Capacity</h1>
+        <div class="print-subtitle" id="printSubtitle"></div>
+      </div>
+      <div class="print-params" id="printParams"></div>
+
       <div class="summary-row" id="summaryCards"></div>
 
       <div class="chart-container">
@@ -482,6 +643,7 @@
       </div>
 
       <div class="notes" id="notesArea"></div>
+      <div class="print-footer" id="printFooter"></div>
     </div>
 
     <div id="placeholderArea" class="placeholder">
@@ -620,6 +782,39 @@ function onGradeGrateCapture(Q, d, Sx, SL, n, Lg, Wg, grateKey) {
 
   const E = Rf * Eo + Rs * (1 - Eo);
   return Math.min(E * Q, Q);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PRINT
+// ═══════════════════════════════════════════════════════
+function printChart() {
+  const isSag = mode === 'sag';
+  const grateLabel = GRATE_DATA[document.getElementById('grateType').value].label;
+  const lintelOn = getBool('lintelOn');
+  const grateOn = getBool('grateOn');
+  const components = [lintelOn ? 'Lintel' : null, grateOn ? 'Grate' : null].filter(Boolean).join(' + ');
+
+  document.getElementById('printSubtitle').textContent =
+    `${isSag ? 'Sag' : 'On-Grade'} Inlet Analysis  —  ${components}  —  ${new Date().toLocaleDateString('en-AU')}`;
+
+  const params = [
+    ['Kerb Height', `${(getVal('kerbHeight')*1000).toFixed(0)} mm`],
+    ['Lintel Opening', `${(getVal('lintelOpeningH')*1000).toFixed(0)} mm`],
+    ['Lintel Length', `${getVal('lintelLength').toFixed(2)} m`],
+    ['Crossfall', `${getVal('crossfall').toFixed(1)}%`],
+    ['Long. Grade', `${getVal('longGrade').toFixed(1)}%`],
+    ['Manning\'s n', `${getVal('manningsN')}`],
+    ['Pit Size', `${(getVal('pitLength')*1000).toFixed(0)}×${(getVal('pitWidth')*1000).toFixed(0)} mm`],
+    ['Grate Type', grateLabel],
+  ];
+  document.getElementById('printParams').innerHTML = params.map(
+    ([k,v]) => `<span><span class="param-label">${k}:</span> ${v}</span>`
+  ).join(' &nbsp;&nbsp;|&nbsp;&nbsp; ');
+
+  document.getElementById('printFooter').textContent =
+    `HEC-22 (3rd Ed.) Inlet Capacity  —  Generated ${new Date().toLocaleString('en-AU')}`;
+
+  window.print();
 }
 
 // ═══════════════════════════════════════════════════════
